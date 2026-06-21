@@ -1,0 +1,116 @@
+{{- $ringsTotal := .Values.ringsTotal | int }}
+{{- range $index := until $ringsTotal }}
+{{- $ringId := printf "ring%d" $index }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "danny.fullname" $ }}-{{ $ringId }}
+  labels:
+    {{- include "danny.labels" $ | nindent 4 }}
+spec:
+  replicas: {{ $.Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: dnaerys-as # required for auto-discovery to form Dnaerys cluster
+      {{- include "danny.selectorLabels" $ | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        app: dnaerys-as # required for auto-discovery to form Dnaerys cluster
+        {{- include "danny.selectorLabels" $ | nindent 8 }}
+    spec:
+      containers:
+        - name: {{ $.Chart.Name }}
+          image: "{{ $.Values.image.name }}:{{ $.Values.image.tag | default $.Chart.AppVersion }}"
+          imagePullPolicy: {{ $.Values.image.pullPolicy }}
+          ports:
+            - name: management
+              containerPort: 8558
+              protocol: TCP
+            - name: grpc
+              containerPort: 8000
+              protocol: TCP
+            {{- if eq $.Values.artery.transport "aeron-udp" }}
+            # Aeron-UDP remoting: pod-to-pod Artery traffic over UDP (only when transport is aeron-udp)
+            - name: artery-udp
+              containerPort: {{ $.Values.artery.aeron.udpPort }}
+              protocol: UDP
+            {{- end }}
+          volumeMounts:
+            - mountPath: {{ $.Values.pv.mountPath }}
+              name: dataset
+              readOnly: true
+            {{- if eq $.Values.artery.transport "aeron-udp" }}
+            # Enlarged /dev/shm for the embedded Aeron media driver (container default of 64Mi is too small)
+            - mountPath: /dev/shm
+              name: dshm
+            {{- end }}
+          livenessProbe:
+            httpGet:
+              path: /alive
+              port: management
+            periodSeconds: 10
+            failureThreshold: 5
+            initialDelaySeconds: 60
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: management
+            periodSeconds: 10
+            failureThreshold: 3
+            initialDelaySeconds: 60
+          {{- $resources := $.Values.resources }}
+          {{- if eq $.Values.artery.transport "aeron-udp" }}
+          {{- /* /dev/shm tmpfs counts against the pod memory limit, so add devShmSize to request & limit (all "Gi").
+                 deepCopy + patch only memory so any other resource fields (e.g. cpu) are preserved untouched. */}}
+          {{- $shmGi := $.Values.artery.aeron.devShmSize | trimSuffix "Gi" | int }}
+          {{- $resources = deepCopy $.Values.resources }}
+          {{- $_ := set $resources.requests "memory" (printf "%dGi" (add ($.Values.resources.requests.memory | trimSuffix "Gi" | int) $shmGi)) }}
+          {{- $_ := set $resources.limits   "memory" (printf "%dGi" (add ($.Values.resources.limits.memory   | trimSuffix "Gi" | int) $shmGi)) }}
+          {{- end }}
+          resources:
+            {{- toYaml $resources | nindent 12 }}
+          env:
+          - name: ARTERY_TRANSPORT
+            value: {{ $.Values.artery.transport | quote }}
+          {{- if eq $.Values.artery.transport "aeron-udp" }}
+          # Aeron backoff/idle CPU level (only used when transport is aeron-udp)
+          - name: ARTERY_IDLE_CPU_LEVEL
+            value: {{ $.Values.artery.aeron.idleCpuLevel | quote }}
+          {{- end }}
+          - name: REQUIRED_CONTACT_POINT_NR # should be = initial # rings
+            value: {{ $ringsTotal | quote }}
+          - name: RING_ID
+            value: {{ $ringId | quote }}
+          - name: DISABLE_KINSHIP
+            value: "{{ $.Values.env.disable_kinship }}"
+          - name: DISABLE_KINSHIP_TRIO
+            value: "{{ $.Values.env.disable_kinship_trio }}"
+          - name: LICENSE
+            value: "{{ $.Values.env.license }}"
+          - name: JAVA_OPTS
+            value: >-
+              --add-opens java.base/java.lang=ALL-UNNAMED
+              --add-opens java.base/java.lang.invoke=ALL-UNNAMED
+              --add-opens=java.base/java.net=ALL-UNNAMED
+              --add-opens=java.base/java.nio=ALL-UNNAMED
+              --add-opens=java.base/java.time=ALL-UNNAMED
+              --add-opens=java.base/java.util=ALL-UNNAMED
+              --add-opens java.base/java.util.concurrent.atomic=ALL-UNNAMED
+              --add-opens=java.base/sun.nio.ch=ALL-UNNAMED
+              --add-opens=java.base/sun.util.calendar=ALL-UNNAMED
+              {{ $.Values.env.java_xmx | required "values.yaml: env.java_xmx is required - set JVM heap size, e.g. -Xmx11g -Xms11g" }}
+      volumes:
+      - name: dataset
+        persistentVolumeClaim:
+          claimName: {{ $.Values.pv.pvcName }}
+      {{- if eq $.Values.artery.transport "aeron-udp" }}
+      # tmpfs-backed /dev/shm sized via artery.aeron.devShmSize (memory-backed emptyDir)
+      - name: dshm
+        emptyDir:
+          medium: Memory
+          sizeLimit: {{ $.Values.artery.aeron.devShmSize }}
+      {{- end }}
+...
+{{- end }}

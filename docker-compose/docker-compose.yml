@@ -1,0 +1,74 @@
+networks:
+  cluster-network:
+
+services:
+
+  node0:
+    networks:
+      - cluster-network
+    image: dnaerys/dnaerys-cluster:latest
+    ports:
+      - '8001:8000'
+      - '8080:8080'
+      - '8081:8081'
+    volumes:
+      - ./dnaerys/dataset:/dnaerys/dataset
+    shm_size: '1gb'
+    environment:
+      DEPLOYMENT_MODE: docker
+      REQUIRED_CONTACT_POINT_NR: 0
+      CLUSTER_HOST: node0
+      CLUSTER_SEED_HOST: node0
+      JAVA_OPTS: '--add-opens java.base/java.lang=ALL-UNNAMED --add-opens java.base/java.lang.invoke=ALL-UNNAMED --add-opens=java.base/java.net=ALL-UNNAMED --add-opens=java.base/java.nio=ALL-UNNAMED --add-opens=java.base/java.time=ALL-UNNAMED --add-opens=java.base/java.util=ALL-UNNAMED --add-opens java.base/java.util.concurrent.atomic=ALL-UNNAMED --add-opens=java.base/sun.nio.ch=ALL-UNNAMED --add-opens=java.base/sun.util.calendar=ALL-UNNAMED'
+      RING_ID: ring0
+
+  node1:
+    networks:
+      - cluster-network
+    image: dnaerys/dnaerys-cluster:latest
+    ports:
+      - '8002:8000'
+    volumes:
+      - ./dnaerys/dataset:/dnaerys/dataset
+    shm_size: '1gb'
+    environment:
+      DEPLOYMENT_MODE: docker
+      REQUIRED_CONTACT_POINT_NR: 0
+      CLUSTER_HOST: node1
+      CLUSTER_SEED_HOST: node0
+      JAVA_OPTS: '--add-opens java.base/java.lang=ALL-UNNAMED --add-opens java.base/java.lang.invoke=ALL-UNNAMED --add-opens=java.base/java.net=ALL-UNNAMED --add-opens=java.base/java.nio=ALL-UNNAMED --add-opens=java.base/java.time=ALL-UNNAMED --add-opens=java.base/java.util=ALL-UNNAMED --add-opens java.base/java.util.concurrent.atomic=ALL-UNNAMED --add-opens=java.base/sun.nio.ch=ALL-UNNAMED --add-opens=java.base/sun.util.calendar=ALL-UNNAMED'
+      RING_ID: ring1
+
+  node2:
+    networks:
+      - cluster-network
+    image: dnaerys/dnaerys-cluster:latest
+    ports:
+      - '8003:8000'
+    volumes:
+      - ./dnaerys/dataset:/dnaerys/dataset
+    shm_size: '1gb'
+    environment:
+      DEPLOYMENT_MODE: docker
+      REQUIRED_CONTACT_POINT_NR: 0
+      CLUSTER_HOST: node2
+      CLUSTER_SEED_HOST: node0
+      JAVA_OPTS: '--add-opens java.base/java.lang=ALL-UNNAMED --add-opens java.base/java.lang.invoke=ALL-UNNAMED --add-opens=java.base/java.net=ALL-UNNAMED --add-opens=java.base/java.nio=ALL-UNNAMED --add-opens=java.base/java.time=ALL-UNNAMED --add-opens=java.base/java.util=ALL-UNNAMED --add-opens java.base/java.util.concurrent.atomic=ALL-UNNAMED --add-opens=java.base/sun.nio.ch=ALL-UNNAMED --add-opens=java.base/sun.util.calendar=ALL-UNNAMED'
+      RING_ID: ring2
+
+  node3:
+    networks:
+      - cluster-network
+    image: dnaerys/dnaerys-cluster:latest
+    ports:
+      - '8004:8000'
+    volumes:
+      - ./dnaerys/dataset:/dnaerys/dataset
+    shm_size: '1gb'
+    environment:
+      DEPLOYMENT_MODE: docker
+      REQUIRED_CONTACT_POINT_NR: 0
+      CLUSTER_HOST: node3
+      CLUSTER_SEED_HOST: node0
+      JAVA_OPTS: '--add-opens java.base/java.lang=ALL-UNNAMED --add-opens java.base/java.lang.invoke=ALL-UNNAMED --add-opens=java.base/java.net=ALL-UNNAMED --add-opens=java.base/java.nio=ALL-UNNAMED --add-opens=java.base/java.time=ALL-UNNAMED --add-opens=java.base/java.util=ALL-UNNAMED --add-opens java.base/java.util.concurrent.atomic=ALL-UNNAMED --add-opens=java.base/sun.nio.ch=ALL-UNNAMED --add-opens=java.base/sun.util.calendar=ALL-UNNAMED'
+      RING_ID: ring3

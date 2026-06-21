@@ -1,0 +1,84 @@
+{{- $ringsTotal := .Values.ringsTotal | int }}
+{{- range $index := until $ringsTotal }}
+{{- $ringId := printf "ring%d" $index }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "danny.fullname" $ }}-{{ $ringId }}
+  labels:
+    {{- include "danny.labels" $ | nindent 4 }}
+spec:
+  replicas: {{ $.Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: dnaerys-as # required for auto-discovery to form Dnaerys cluster
+      {{- include "danny.selectorLabels" $ | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        app: dnaerys-as # required for auto-discovery to form Dnaerys cluster
+        {{- include "danny.selectorLabels" $ | nindent 8 }}
+    spec:
+      containers:
+        - name: {{ $.Chart.Name }}
+          image: "{{ $.Values.image.name }}:{{ $.Values.image.tag | default $.Chart.AppVersion }}"
+          imagePullPolicy: {{ $.Values.image.pullPolicy }}
+          ports:
+            - name: management
+              containerPort: 8558
+              protocol: TCP
+            - name: grpc
+              containerPort: 8000
+              protocol: TCP
+          volumeMounts:
+            - mountPath: /dnaerys/dataset
+              name: dataset
+          livenessProbe:
+            httpGet:
+              path: /alive
+              port: management
+            periodSeconds: 10
+            failureThreshold: 5
+            initialDelaySeconds: 60
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: management
+            periodSeconds: 10
+            failureThreshold: 3
+            initialDelaySeconds: 60
+          resources:
+            {{- toYaml $.Values.resources | nindent 12 }}
+          env:
+          - name: REQUIRED_CONTACT_POINT_NR # should be = initial # rings
+            value: {{ $ringsTotal | quote }}
+          - name: RING_ID
+            value: {{ $ringId | quote }}
+          - name: DISABLE_KINSHIP
+            value: "{{ $.Values.env.disable_kinship }}"
+          - name: DISABLE_KINSHIP_TRIO
+            value: "{{ $.Values.env.disable_kinship_trio }}"
+          - name: LICENSE
+            valueFrom:
+              secretKeyRef:
+                name: {{ $.Values.env.license_secret }}
+                key: license
+          - name: JAVA_OPTS
+            value: >-
+              --add-opens java.base/java.lang=ALL-UNNAMED
+              --add-opens java.base/java.lang.invoke=ALL-UNNAMED
+              --add-opens=java.base/java.net=ALL-UNNAMED
+              --add-opens=java.base/java.nio=ALL-UNNAMED
+              --add-opens=java.base/java.time=ALL-UNNAMED
+              --add-opens=java.base/java.util=ALL-UNNAMED
+              --add-opens java.base/java.util.concurrent.atomic=ALL-UNNAMED
+              --add-opens=java.base/sun.nio.ch=ALL-UNNAMED
+              --add-opens=java.base/sun.util.calendar=ALL-UNNAMED
+              {{ $.Values.env.java_xmx | required "values.yaml: env.java_xmx is required - set JVM heap size, e.g. -Xmx11g -Xms11g" }}
+      volumes:
+      - name: dataset
+        persistentVolumeClaim:
+          claimName: {{ $.Values.pv.pvcName }}
+...
+{{- end }}

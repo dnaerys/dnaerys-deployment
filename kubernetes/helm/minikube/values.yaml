@@ -1,0 +1,43 @@
+nameOverride: "dnaerys-datasetname"
+fullnameOverride: "dnaerys-datasetname"
+
+ringsTotal: 8 # number of nodes in the cluster, equals to number of pods when replicaCount = 1
+replicaCount: 1
+
+env:
+  license: ""
+
+image:
+  name: dnaerys/dnaerys-cluster
+  pullPolicy: IfNotPresent
+  tag: "latest"
+
+imagePullSecrets: []
+
+service:
+  type: ClusterIP
+  port: 8002
+  targetPort: 8000
+
+pv:
+  pvName:  dnaerys-datasetname
+  pvcName: dnaerys-datasetname
+  datasetPath: /dnaerys/datasetname
+
+ingress:
+  enabled: true
+  className: "nginx"
+  annotations:
+    nginx.ingress.kubernetes.io/backend-protocol: "GRPC"
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
+  hosts:
+    - host: db.dnaerys.org
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: db-tls
+      hosts:
+        - db.dnaerys.org
+
+resources: {}

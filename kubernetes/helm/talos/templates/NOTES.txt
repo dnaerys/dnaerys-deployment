@@ -1,0 +1,19 @@
+Release {{ .Release.Name }} installed in namespace {{ .Release.Namespace }}
+
+Ingress host: https://{{ (index .Values.ingress.hosts 0).host }}/
+Ingress class: {{ .Values.ingress.className }}
+Dnaerys Nodes: {{ .Values.ringsTotal }}
+
+------------------------------------------------------------
+TLS
+
+This release references an externally-managed TLS Secret:
+
+    {{ (index .Values.ingress.tls 0).secretName }}
+------------------------------------------------------------
+License
+
+This release references an externally-managed License Secret:
+
+    {{ .Values.env.license_secret }}
+------------------------------------------------------------

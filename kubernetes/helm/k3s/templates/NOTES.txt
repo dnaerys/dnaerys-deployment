@@ -1,0 +1,26 @@
+Release {{ .Release.Name }} installed in namespace {{ .Release.Namespace }}
+
+Ingress host (HTTPS): https://{{ (index .Values.ingress.hosts 0).host }}/   (nginx :443, TLS)
+Ingress host (HTTP):  http://{{ (index .Values.ingress.hosts 0).host }}/    (nginx :80, ssl-redirect=false, no redirect)
+Ingress class: {{ .Values.ingress.className }}
+Dnaerys Nodes: {{ .Values.ringsTotal }}
+
+Dataset (host hostPath): {{ .Values.pv.hostPath }}
+Mounted in pods at:      {{ .Values.pv.mountPath }} (read-only)
+
+------------------------------------------------------------
+TLS
+{{- if .Values.ingress.tls }}
+
+This release deploys a chart-managed TLS Secret (cert material bundled under ./certs):
+
+    {{ (index .Values.ingress.tls 0).secretName }}
+{{- else }}
+
+No TLS secret configured. nginx will serve its default certificate.
+{{- end }}
+------------------------------------------------------------
+License
+
+License is provided inline via env.license (local-only install).
+------------------------------------------------------------
